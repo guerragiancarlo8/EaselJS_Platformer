@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="http://code.createjs.com/easeljs-0.6.0.min.js"></script>
+	<script>
+		var canvas;
+		var stage;
+		var screen_width;
+		var screen_height;
+		var bmpAnimation;
+		var numberOfImagesLoaded = 0;
+
+		var imgMonsterARun = new Image();
+		var imgMonsterAIdle = new Image();
+
+		function init(){
+			//find canvas and wait for last image to load
+			canvas = document.getElementById("testCanvas")
+			imgMonsterARun.onload = handleImageLoad;
+			imgMonsterARun.onerror = handleImageError;
+			imgMonsterARun.src = "Run.png"
+
+			imgMonsterAIdle.onload = handleImageLoad;
+			imgMonsterAIdle.onerror = handleImageError;
+			imgMonsterAIdle.src = "idle.png"
+		}
+
+		function reset(){
+			stage.removeAllChildren();
+			createjs.Ticker.removeAllListeners();
+			stage.update();
+		}
+
+		function handleImageLoad(e){
+			numberOfImagesLoaded++;
+			//not starting game until all images loaded
+			if(numberOfImagesLoaded == 2){
+				numberOfImagesLoaded = 0
+				startGame();
+			}
+		}
+
+		function startGame(){
+			//create new stage and point it at canvas
+			stage = new createjs.Stage(canvas)
+			//grab canvas width and height for later calcs
+			screen_width = canvas.width;
+			screen_height = canvas.height;
+			//create spritesheet and assign the associated data
+			//create the idle spritesheet
+			var spriteSheetIdle = new createjs.SpriteSheet({
+				images: [imgMonsterAIdle],
+				frames: {width: 64, height: 64, regX: 32, regY:32},
+				animations: {
+					idle: [0,10,"idle",4]
+				}
+			});
+
+			bmpAnimationIdle = new createjs.BitmapAnimation(spriteSheetIdle);
+
+			bmpAnimationIdle.name = "monsteridle1";
+			bmpAnimationIdle.x = 16;
+			bmpAnimationIdle.y = 32;
+			
+			var spriteSheet = new createjs.SpriteSheet({
+				//image to use
+				images: [imgMonsterARun],
+				//width height & registration point of each sprite
+				frames: {width: 64, height: 64, regX: 32, regY: 32},
+				animations: {
+					walk: [0,9,"walk",4]
+					//el primer parametro es el primer elemento del array
+					//el segundo parametro es el segundo parametro del array
+					//el 4 le reduce la velocidad por 4
+				}
+			});
+
+			createjs.SpriteSheetUtils.addFlippedFrames(spriteSheet, true, false, false);
+
+			//create BitmapAction instance to display and play back the spritesheet
+			bmpAnimation = new createjs.BitmapAnimation(spriteSheet);
+			//set the point it will be positioned and rotated around
+			//to the centre of the frame dimensions
+			bmpAnimation.regX = bmpAnimation.spriteSheet.frameWidth/2 | 0;
+			bmpAnimation.regY = bmpAnimation.spriteSheet.frameHeight/2 | 0;
+			//start playing the first sequence:
+			bmpAnimation.gotoAndPlay("walk_h");
+			//set up shadow. expensive
+			bmpAnimation.shadow = new createjs.Shadow("#454",0,5,4);
+			bmpAnimation.name = "monster1";
+			bmpAnimation.direction = 90;
+			bmpAnimation.vX = 4;
+			bmpAnimation.x = 16;
+			bmpAnimation.y = 32;
+			//have monster start at a specific frame
+			bmpAnimation.currentFrame = 10;
+			stage.addChild(bmpAnimation);
+
+			createjs.Ticker.addListener(window)
+			createjs.Ticker.useRAF = true;
+			createjs.Ticker.setFPS(60);
+		}
+
+		function handleImageError(e){
+			console.log("Error Loading Image : " + e.target.src);
+		}
+
+		function tick(){
+			//Hit testing the screen width, otherwise our sprite disapppears
+			if(bmpAnimation.x >= screen_width - 16){
+				//we've reached the right side of our screen
+				//we need to walk left now to go back to our init pos
+				bmpAnimation.direction = -90;
+				bmpAnimation.gotoAndPlay("walk")
+			}
+			if(bmpAnimation.x < 16){
+				//we've reached the left side of screen
+				//walk right
+				bmpAnimation.direction = 90;
+				bmpAnimation.gotoAndStop("walk");
+				stage.removeChild(bmpAnimation);
+				bmpAnimationIdle.gotoAndPlay("idle");
+				stage.addChild(bmpAnimationIdle);
+			}
+			if(bmpAnimation.direction == 90){
+				bmpAnimation.x += bmpAnimation.vX;
+				bmpAnimation.gotoAndPlay("walk_h");
+			}
+			else {
+				bmpAnimation.x -= bmpAnimation.vX;
+			}
+			stage.update();
+		}
+
+	</script>
+</head>
+<body>
+	<div class="canvasHolder">
+		<canvas id="testCanvas" width="240" height="64"></canvas>
+	</div>
+	<button id="Start" onclick="init();">Start</button>
+	<button id="Reset" onclick="reset();">Reset</button>
+</body>
+</html>
